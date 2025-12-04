@@ -1,17 +1,30 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.cluster import KMeans
+import pandas as pd 
+import numpy as np 
+import matplotlib.pyplot as plt 
+import seaborn as sns from sklearn.preprocessing 
+import StandardScaler, LabelEncoder 
+from sklearn.cluster 
+import KMeans
+import os
 
 
-# Konfigurasi Halaman
-st.set_page_config(page_title="TV Shows Segmentation", layout="wide")
+# --- KONFIGURASI HALAMAN ---
+st.set_page_config(
+    page_title="Netflix-Style Algo",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-st.title("📺 Analisis Segmentasi TV Shows")
-st.write("Aplikasi ini mengelompokkan acara TV berdasarkan Popularitas dan Rating menggunakan K-Means Clustering.")
+# --- JUDUL & HEADER ---
+st.title("🎬 TV Shows Recommendation Engine")
+st.markdown("""
+**Konsep Algoritma:**
+Aplikasi ini mendeteksi status acara TV untuk strategi promosi:
+* **💎 Underrated:** Rating Tinggi, Popularitas Rendah $\\rightarrow$ **BOOST PROMO (Hidden Gem)**
+* **🔥 Well Rated:** Rating Tinggi, Popularitas Tinggi $\\rightarrow$ **MAINTAIN (Fan Favorite)**
+* **⚠️ Overrated/Low:** Rating Rendah $\\rightarrow$ **REDUCE PROMO (Fix Quality)**
+""")
 
 # --- 1. LOAD DATA ---
 @st.cache_data
@@ -26,87 +39,112 @@ except FileNotFoundError:
     st.error("File '10k_Poplar_Tv_Shows.csv' tidak ditemukan. Pastikan file ada di GitHub repository.")
     st.stop()
 
-# --- 2. DATA PREPROCESSING ---
-# Hapus Duplikat & Missing Values
+# --- 2. PREPROCESSING & MODELING ---
+# Cleaning
 df_clean = df.drop_duplicates().dropna(subset=['first_air_date']).copy()
 
-# Transformasi Log
+# Feature Engineering
 df_clean['popularity_log'] = np.log1p(df_clean['popularity'])
 df_clean['vote_count_log'] = np.log1p(df_clean['vote_count'])
 
-# Encoding (Persiapan Fitur)
-le = LabelEncoder()
-df_analysis = df_clean.copy()
-# Kita hanya butuh fitur numerik untuk clustering ini, tapi encoding tetap kita siapkan
-df_analysis['lang_code'] = le.fit_transform(df_analysis['original_language'])
-df_analysis['country_code'] = le.fit_transform(df_analysis['origin_country'].astype(str))
-df_analysis['genre_code'] = le.fit_transform(df_analysis['genre_ids'].astype(str))
-
 # Scaling
-cluster_features = ['popularity_log', 'vote_average', 'vote_count_log']
-X = df_analysis[cluster_features].copy()
-
+X = df_clean[['popularity_log', 'vote_average', 'vote_count_log']].copy()
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-# --- 3. MODELING (K-MEANS) ---
-# Menggunakan K=3 sesuai hasil Elbow Method di notebook
+# Clustering (K=3)
 kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
 clusters = kmeans.fit_predict(X_scaled)
-
-# Gabungkan hasil ke dataframe utama
 df_clean['Cluster'] = clusters
 
-# Mapping nama cluster agar lebih mudah dibaca
-cluster_mapping = {
-    0: "Mainstream (Standard)",
-    1: "Blockbuster (Hits)",
-    2: "Niche (Low Perform)"
+# --- 3. AUTO-MAPPING LOGIC (LOGIKA CERDAS) ---
+# Kita harus mencari tahu Cluster 0, 1, 2 itu yang mana secara otomatis
+# Caranya: Hitung rata-rata rating & popularitas tiap cluster
+
+cluster_stats = df_clean.groupby('Cluster')[['vote_average', 'popularity_log']].mean()
+
+# 1. Cari Cluster dengan Rating TERENDAH -> Overrated/Low Quality
+cluster_overrated = cluster_stats['vote_average'].idxmin()
+
+# 2. Sisa 2 cluster adalah yang ratingnya bagus. Bandingkan Popularitasnya.
+remaining_clusters = cluster_stats.drop(cluster_overrated)
+cluster_well_rated = remaining_clusters['popularity_log'].idxmax() # Populer & Bagus
+cluster_underrated = remaining_clusters['popularity_log'].idxmin() # Kurang Populer & Bagus
+
+# Buat Dictionary Mapping
+label_mapping = {
+    cluster_well_rated: "Well Rated (Popular)",
+    cluster_underrated: "Underrated (Hidden Gem)",
+    cluster_overrated: "Overrated / Low Perf"
 }
-df_clean['Cluster Name'] = df_clean['Cluster'].map(cluster_mapping)
 
-# --- 4. DASHBOARD TAMPILAN ---
+action_mapping = {
+    cluster_well_rated: "✅ Pertahankan Promosi (Cash Cow)",
+    cluster_underrated: "🚀 BOOST PROMO! (Potensi Viral)",
+    cluster_overrated: "🔻 Kurangi Budget Iklan (Evaluasi)"
+}
 
-# Tampilkan Statistik Cluster
-st.subheader("📊 Profil Setiap Cluster")
-col1, col2 = st.columns([1, 2])
+df_clean['Category'] = df_clean['Cluster'].map(label_mapping)
+df_clean['Action'] = df_clean['Cluster'].map(action_mapping)
 
-with col1:
-    st.write("Rata-rata Metrik per Cluster:")
-    # Grouping untuk melihat karakteristik
-    cluster_stats = df_clean.groupby('Cluster Name')[['popularity', 'vote_average', 'vote_count']].mean().reset_index()
-    st.dataframe(cluster_stats)
+# --- 4. SEARCH ENGINE INTERFACE ---
+st.divider()
+st.subheader("🔍 Cari Judul Film / TV Show")
 
-    st.write("Jumlah Data per Cluster:")
-    st.bar_chart(df_clean['Cluster Name'].value_counts())
+# Input Search
+search_query = st.text_input("Masukkan kata kunci judul (Contoh: Game of Thrones, Naruto, dll):")
 
-with col2:
-    # Visualisasi Scatter Plot
-    st.write("Visualisasi Sebaran: Popularitas vs Rating")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.scatterplot(
-        data=df_clean, 
-        x='popularity_log', 
-        y='vote_average', 
-        hue='Cluster Name', 
-        palette='viridis', 
-        s=20, 
-        alpha=0.6,
-        ax=ax
-    )
-    ax.set_title("Segmentasi: Log Popularity vs Vote Average")
-    ax.set_xlabel("Log Popularity")
-    ax.set_ylabel("Rating (Vote Average)")
+if search_query:
+    # Filter Data (Case Insensitive)
+    results = df_clean[df_clean['original_name'].str.contains(search_query, case=False, na=False)]
+    
+    if len(results) > 0:
+        st.success(f"Ditemukan {len(results)} hasil pencarian:")
+        
+        # Loop untuk menampilkan hasil seperti kartu
+        for index, row in results.head(5).items(): # Tampilkan max 5 hasil teratas
+             # Ambil data baris (karena iterrows agak lambat, kita pakai iloc di loop terpisah jika data besar, tapi untuk 5 ok)
+             pass 
+        
+        # Tampilan Tabel Interaktif
+        for i, row in results.iterrows():
+            with st.container():
+                c1, c2, c3 = st.columns([2, 1, 1])
+                
+                with c1:
+                    st.subheader(f"📺 {row['original_name']}")
+                    st.write(f"**Rilis:** {row['first_air_date']} | **Bahasa:** {row['original_language']}")
+                    st.write(f"**Overview:** {str(row['overview'])[:150]}...")
+                
+                with c2:
+                    st.metric("Rating", f"{row['vote_average']}/10")
+                    st.metric("Popularitas", f"{row['popularity']:.0f}")
+                
+                with c3:
+                    # Logika Warna Badge
+                    if row['Cluster'] == cluster_underrated:
+                        st.info(f"💎 {row['Category']}")
+                        st.markdown(f"**Saran:**\n\n:rocket: {row['Action']}")
+                    elif row['Cluster'] == cluster_well_rated:
+                        st.success(f"🔥 {row['Category']}")
+                        st.markdown(f"**Saran:**\n\n:white_check_mark: {row['Action']}")
+                    else:
+                        st.warning(f"⚠️ {row['Category']}")
+                        st.markdown(f"**Saran:**\n\n:small_red_triangle_down: {row['Action']}")
+                
+                st.divider()
+    else:
+        st.warning("Tidak ditemukan judul yang cocok. Coba kata kunci lain.")
+
+# --- 5. STATISTIK GLOBAL ---
+st.write("---")
+with st.expander("Lihat Analisis Keseluruhan (Dashboard)"):
+    st.write("Profil Rata-rata per Kategori:")
+    summary = df_clean.groupby('Category')[['vote_average', 'popularity', 'vote_count']].mean()
+    st.dataframe(summary)
+    
+    # Visualisasi
+    fig, ax = plt.subplots(figsize=(8, 4))
+    sns.scatterplot(data=df_clean, x='popularity_log', y='vote_average', hue='Category', palette='Set1', s=30, ax=ax)
+    ax.set_title("Peta Persebaran Kategori")
     st.pyplot(fig)
-
-# --- 5. DATA EXPLORER ---
-st.subheader("🔍 Cari Judul Acara TV")
-selected_cluster = st.selectbox("Pilih Kategori Cluster:", df_clean['Cluster Name'].unique())
-
-filtered_data = df_clean[df_clean['Cluster Name'] == selected_cluster]
-st.write(f"Menampilkan 10 data teratas dari kategori **{selected_cluster}**:")
-st.dataframe(filtered_data[['original_name', 'popularity', 'vote_average', 'vote_count', 'first_air_date']].head(10))
-
-# Tampilkan Raw Data (Opsional)
-if st.checkbox("Tampilkan semua data mentah"):
-    st.dataframe(df_clean)
