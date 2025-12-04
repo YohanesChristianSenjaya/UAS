@@ -6,6 +6,20 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
 
+# --- 1. LOAD DATA (METODE RAW URL) ---
+@st.cache_data
+def load_data():
+    try:
+        # GANTI URL DI BAWAH INI dengan URL Raw yang Anda copy dari GitHub
+        url_csv = "https://raw.githubusercontent.com/YohanesChristianSenjaya/UAS/refs/heads/main/sssssssss/10k_Poplar_Tv_Shows.csv"
+        
+        df = pd.read_csv(url_csv)
+        return df
+        
+    except Exception as e:
+        st.error(f"Gagal memuat data dari URL. Error: {e}")
+        return None
+
 # Konfigurasi Halaman
 st.set_page_config(page_title="TV Shows Segmentation", layout="wide")
 
