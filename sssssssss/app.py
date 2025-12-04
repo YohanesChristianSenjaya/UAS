@@ -6,6 +6,41 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
 
+# ... (import library lainnya di atas)
+import os  # <--- Tambahkan ini untuk deteksi lokasi file
+
+# ... (kode konfigurasi halaman)
+
+# --- 1. LOAD DATA (ANTI-NYASAR) ---
+@st.cache_data
+def load_data():
+    try:
+        # 1. Cari tahu lokasi file app.py ini ada di mana
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # 2. Gabungkan lokasi tersebut dengan nama file CSV
+        # Hasilnya akan jadi path lengkap: /mount/src/uas/sssssssss/10k_Poplar_Tv_Shows.csv
+        file_path = os.path.join(current_dir, '10k_Poplar_Tv_Shows.csv')
+        
+        # 3. Baca file dari path lengkap
+        df = pd.read_csv(file_path)
+        return df
+        
+    except FileNotFoundError:
+        return None
+
+df = load_data()
+
+if df is None:
+    # Tampilkan error debugging biar ketahuan dia nyari di mana
+    import os
+    st.error(f"❌ File tidak ketemu! Sistem mencari di: {os.path.join(os.path.dirname(os.path.abspath(__file__)), '10k_Poplar_Tv_Shows.csv')}")
+    st.write("Cek apakah nama file di GitHub huruf besar/kecilnya SAMA PERSIS?")
+    st.stop()
+
+# ... (lanjutan kode lainnya ke bawah)
+
+
 # --- 1. LOAD DATA (METODE RAW URL) ---
 @st.cache_data
 def load_data():
