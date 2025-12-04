@@ -6,61 +6,6 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
 
-import os
-
-# --- GANTI BAGIAN LOAD DATA DENGAN INI ---
-@st.cache_data
-def load_data():
-    try:
-        # 1. Dapatkan lokasi di mana file app.py ini berada
-        base_path = os.path.dirname(__file__)
-        
-        # 2. Gabungkan lokasi itu dengan nama file CSV
-        # Ini akan menghasilkan path lengkap seperti: /mount/src/repo/sssssssss/10k_Poplar_Tv_Shows.csv
-        file_path = os.path.join(base_path, '10k_Poplar_Tv_Shows.csv')
-        
-        # 3. Baca data
-        df = pd.read_csv(file_path)
-        return df
-        
-    except FileNotFoundError:
-        return None
-
-df = load_data()
-
-if df is None:
-    # --- DEBUGGING JIKA MASIH ERROR ---
-    import os
-    st.error("File Masih Tidak Ditemukan!")
-    
-    # Tampilkan di mana sistem mencari file
-    base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, '10k_Poplar_Tv_Shows.csv')
-    st.write(f"🔍 Sistem mencari di lokasi ini: `{file_path}`")
-    
-    # Tampilkan daftar file yang benar-benar ada di folder itu
-    st.write(f"📂 Isi folder `{base_path}` adalah:")
-    try:
-        st.code(os.listdir(base_path))
-    except:
-        st.write("Tidak bisa membaca folder.")
-        
-    st.stop()
-
-
-# --- 1. LOAD DATA (METODE RAW URL) ---
-@st.cache_data
-def load_data():
-    try:
-        # GANTI URL DI BAWAH INI dengan URL Raw yang Anda copy dari GitHub
-        url_csv = "https://raw.githubusercontent.com/YohanesChristianSenjaya/UAS/refs/heads/main/sssssssss/10k_Poplar_Tv_Shows.csv"
-        
-        df = pd.read_csv(url_csv)
-        return df
-        
-    except Exception as e:
-        st.error(f"Gagal memuat data dari URL. Error: {e}")
-        return None
 
 # Konfigurasi Halaman
 st.set_page_config(page_title="TV Shows Segmentation", layout="wide")
@@ -72,7 +17,7 @@ st.write("Aplikasi ini mengelompokkan acara TV berdasarkan Popularitas dan Ratin
 @st.cache_data
 def load_data():
     # Pastikan file csv ada di folder yang sama
-    df = pd.read_csv('10k_Poplar_Tv_Shows.csv')
+    df = pd.read_csv('sssssssss/10k_Poplar_Tv_Shows.csv')
     return df
 
 try:
