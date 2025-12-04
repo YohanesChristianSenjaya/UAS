@@ -6,23 +6,20 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
 
-# ... (import library lainnya di atas)
-import os  # <--- Tambahkan ini untuk deteksi lokasi file
+import os
 
-# ... (kode konfigurasi halaman)
-
-# --- 1. LOAD DATA (ANTI-NYASAR) ---
+# --- GANTI BAGIAN LOAD DATA DENGAN INI ---
 @st.cache_data
 def load_data():
     try:
-        # 1. Cari tahu lokasi file app.py ini ada di mana
-        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # 1. Dapatkan lokasi di mana file app.py ini berada
+        base_path = os.path.dirname(__file__)
         
-        # 2. Gabungkan lokasi tersebut dengan nama file CSV
-        # Hasilnya akan jadi path lengkap: /mount/src/uas/sssssssss/10k_Poplar_Tv_Shows.csv
-        file_path = os.path.join(current_dir, '10k_Poplar_Tv_Shows.csv')
+        # 2. Gabungkan lokasi itu dengan nama file CSV
+        # Ini akan menghasilkan path lengkap seperti: /mount/src/repo/sssssssss/10k_Poplar_Tv_Shows.csv
+        file_path = os.path.join(base_path, '10k_Poplar_Tv_Shows.csv')
         
-        # 3. Baca file dari path lengkap
+        # 3. Baca data
         df = pd.read_csv(file_path)
         return df
         
@@ -32,13 +29,23 @@ def load_data():
 df = load_data()
 
 if df is None:
-    # Tampilkan error debugging biar ketahuan dia nyari di mana
+    # --- DEBUGGING JIKA MASIH ERROR ---
     import os
-    st.error(f"❌ File tidak ketemu! Sistem mencari di: {os.path.join(os.path.dirname(os.path.abspath(__file__)), '10k_Poplar_Tv_Shows.csv')}")
-    st.write("Cek apakah nama file di GitHub huruf besar/kecilnya SAMA PERSIS?")
+    st.error("File Masih Tidak Ditemukan!")
+    
+    # Tampilkan di mana sistem mencari file
+    base_path = os.path.dirname(__file__)
+    file_path = os.path.join(base_path, '10k_Poplar_Tv_Shows.csv')
+    st.write(f"🔍 Sistem mencari di lokasi ini: `{file_path}`")
+    
+    # Tampilkan daftar file yang benar-benar ada di folder itu
+    st.write(f"📂 Isi folder `{base_path}` adalah:")
+    try:
+        st.code(os.listdir(base_path))
+    except:
+        st.write("Tidak bisa membaca folder.")
+        
     st.stop()
-
-# ... (lanjutan kode lainnya ke bawah)
 
 
 # --- 1. LOAD DATA (METODE RAW URL) ---
